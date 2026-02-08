@@ -1,0 +1,261 @@
+{
+  "simulation": {
+    "runs": 200,
+    "days": 30,
+    "random_seed": 42
+  },
+  "demand": {
+    "weekday_multipliers": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.05,
+      1.15,
+      1.1
+    ],
+    "order_volatility": 0.2
+  },
+  "cities": [
+    {
+      "name": "small_city",
+      "orders_per_day": 300,
+      "population_index": 0.4,
+      "traffic_index": 0.6,
+      "complexity_index": 0.5,
+      "avg_delivery_minutes": 25,
+      "tracking_updates_per_min": 2.5,
+      "support_rate_multiplier": 0.9,
+      "restaurants_active": 180,
+      "restaurant_subscription_share": 0.25,
+      "order_value_usd": {
+        "mean": 18,
+        "stddev": 6,
+        "min": 7,
+        "max": 55
+      }
+    },
+    {
+      "name": "medium_city",
+      "orders_per_day": 900,
+      "population_index": 0.7,
+      "traffic_index": 0.9,
+      "complexity_index": 0.8,
+      "avg_delivery_minutes": 32,
+      "tracking_updates_per_min": 3.2,
+      "support_rate_multiplier": 1.0,
+      "restaurants_active": 520,
+      "restaurant_subscription_share": 0.3,
+      "order_value_usd": {
+        "mean": 22,
+        "stddev": 7,
+        "min": 8,
+        "max": 65
+      }
+    },
+    {
+      "name": "large_city",
+      "orders_per_day": 1800,
+      "population_index": 1.0,
+      "traffic_index": 1.2,
+      "complexity_index": 1.1,
+      "avg_delivery_minutes": 38,
+      "tracking_updates_per_min": 3.8,
+      "support_rate_multiplier": 1.1,
+      "restaurants_active": 1100,
+      "restaurant_subscription_share": 0.35,
+      "order_value_usd": {
+        "mean": 27,
+        "stddev": 9,
+        "min": 9,
+        "max": 80
+      }
+    }
+  ],
+  "usage": {
+    "base_api_requests": 30,
+    "api_requests_per_tracking_update": 0.2,
+    "base_map_requests": 2.4,
+    "map_requests_per_tracking_update": 1.0,
+    "map_complexity_multiplier": 0.35,
+    "tracking_traffic_multiplier": 0.2,
+    "tracking_jitter": 0.15,
+    "base_ml_calls": 0.25,
+    "ml_calls_per_support_ticket": 1.2,
+    "support_ticket_rate": 0.06,
+    "support_minutes": {
+      "mean": 6,
+      "stddev": 3,
+      "min": 2,
+      "max": 20
+    },
+    "notification": {
+      "push_count": 4,
+      "sms_rate": 0.15,
+      "email_rate": 0.2
+    },
+    "data_mb": {
+      "base_order_mb": 0.4,
+      "tracking_update_mb": 0.02
+    }
+  },
+  "usage_multipliers": {
+    "tracking_updates_multiplier": 1.0,
+    "support_rate_multiplier": 1.0,
+    "map_requests_multiplier": 1.0,
+    "api_requests_multiplier": 1.0,
+    "ml_calls_multiplier": 1.0
+  },
+  "failure_rates": {
+    "map_retry_rate": 0.04,
+    "api_retry_rate": 0.02,
+    "ml_retry_rate": 0.03,
+    "notification_retry_rate": 0.05,
+    "support_escalation_rate": 0.1
+  },
+  "costs": {
+    "map_request_usd": 0.005,
+    "api_request_usd": 0.0002,
+    "ml_call_usd": 0.02,
+    "push_usd": 0.0002,
+    "sms_usd": 0.02,
+    "email_usd": 0.001,
+    "support_minute_usd": 0.35,
+    "storage_gb_usd": 0.023
+  },
+  "payment_processor": {
+    "include_in_costs": true,
+    "percent_fee": 0.029,
+    "fixed_fee_usd": 0.3
+  },
+  "fixed_costs": {
+    "monthly": {
+      "salaries_usd": 60000,
+      "base_infra_usd": 9000,
+      "app_maintenance_usd": 12000,
+      "compliance_usd": 3000,
+      "tools_usd": 2000,
+      "accounting_usd": 2500,
+      "legal_usd": 1500,
+      "hr_ops_usd": 1000
+    },
+    "annual": {
+      "year_end_accounting_usd": 8000,
+      "security_audit_usd": 5000,
+      "company_registration_usd": 1500,
+      "tax_filing_usd": 4000
+    }
+  },
+  "business_models": [
+    {
+      "name": "fixed_fee",
+      "type": "fixed",
+      "fee_usd": 2.25
+    },
+    {
+      "name": "percent",
+      "type": "percent",
+      "percent": 0.09,
+      "min_fee_usd": 0.9,
+      "max_fee_usd": 5.0
+    },
+    {
+      "name": "hybrid",
+      "type": "hybrid",
+      "fee_usd": 1.4,
+      "percent": 0.035,
+      "min_fee_usd": 1.4,
+      "max_fee_usd": 5.5
+    },
+    {
+      "name": "subscription_plus_fixed",
+      "type": "subscription",
+      "monthly_fee_usd": 280,
+      "per_order_fee_usd": 0.6
+    },
+    {
+      "name": "fixed_fee_high",
+      "type": "fixed",
+      "fee_usd": 2.75
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "budget",
+      "description": "Lower unit costs, higher retry rates, lower tracking frequency.",
+      "overrides": {
+        "usage_multipliers": {
+          "tracking_updates_multiplier": 0.85,
+          "support_rate_multiplier": 1.15,
+          "map_requests_multiplier": 0.9,
+          "api_requests_multiplier": 0.9,
+          "ml_calls_multiplier": 0.9
+        },
+        "failure_rates": {
+          "map_retry_rate": 0.06,
+          "api_retry_rate": 0.03,
+          "ml_retry_rate": 0.04,
+          "notification_retry_rate": 0.08,
+          "support_escalation_rate": 0.15
+        },
+        "costs": {
+          "map_request_usd": 0.0035,
+          "api_request_usd": 0.00015,
+          "ml_call_usd": 0.015,
+          "push_usd": 0.00015,
+          "sms_usd": 0.015,
+          "email_usd": 0.0008,
+          "support_minute_usd": 0.3,
+          "storage_gb_usd": 0.02
+        },
+        "payment_processor": {
+          "percent_fee": 0.027,
+          "fixed_fee_usd": 0.25
+        }
+      }
+    },
+    {
+      "name": "standard",
+      "description": "Balanced costs and quality.",
+      "overrides": {}
+    },
+    {
+      "name": "premium",
+      "description": "Higher unit costs, lower retries, higher tracking frequency.",
+      "overrides": {
+        "usage_multipliers": {
+          "tracking_updates_multiplier": 1.15,
+          "support_rate_multiplier": 0.9,
+          "map_requests_multiplier": 1.05,
+          "api_requests_multiplier": 1.05,
+          "ml_calls_multiplier": 1.1
+        },
+        "failure_rates": {
+          "map_retry_rate": 0.02,
+          "api_retry_rate": 0.01,
+          "ml_retry_rate": 0.015,
+          "notification_retry_rate": 0.03,
+          "support_escalation_rate": 0.07
+        },
+        "costs": {
+          "map_request_usd": 0.0075,
+          "api_request_usd": 0.00025,
+          "ml_call_usd": 0.03,
+          "push_usd": 0.00025,
+          "sms_usd": 0.03,
+          "email_usd": 0.0012,
+          "support_minute_usd": 0.45,
+          "storage_gb_usd": 0.03
+        },
+        "payment_processor": {
+          "percent_fee": 0.031,
+          "fixed_fee_usd": 0.3
+        }
+      }
+    }
+  ],
+  "reporting": {
+    "currency": "USD",
+    "report_name": "service_cost_report"
+  }
+}
