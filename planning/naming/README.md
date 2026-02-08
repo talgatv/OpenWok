@@ -123,3 +123,116 @@ Tier 3 — философия и бухгалтерия:
 - При необходимости разделить имя бренда и юрлица.
 
 Этот документ — рабочая «история выбора». Дальше будем расширять и уточнять.
+
+---
+
+## Раунд 2: направление `Open + Walk/Wok` (новый черновик)
+
+Дата обновления: 8 февраля 2026
+
+### Что зафиксировали
+- `Open` нравится как ядро бренда (open-source, открытые правила, прозрачность).
+- Слово `Fire` не используем в названии.
+- `Fire delivery system` можно оставить как слоган/манифест, а не имя.
+- Нужна комбинация с образом движения/доставки (`Walk`) и/или takeout-образом (`Wok`).
+
+### Большая подборка новых вариантов
+
+Серия `Open + Walk`:
+- OpenWalk
+- OpenWalkApp
+- OpenWalkHub
+- OpenWalkFlow
+- OpenWalkRoute
+- OpenWalkLine
+- OpenWalkPath
+- OpenWalkMap
+- OpenWalkLab
+- OpenWalkWorks
+
+Серия `Open + Wok`:
+- OpenWok
+- OpenWokApp
+- OpenWokHub
+- OpenWokLine
+- OpenWokLane
+- OpenWokPath
+- OpenWokLab
+- OpenWokWorks
+- OpenWokGo
+- OpenWonton
+
+Серия с легким юмором и движением:
+- WokRoute
+- WokLane
+- WokPath
+- WokHandoff
+- WalkHandoff
+- WokWalker
+- WokWalks
+- WalkToWok
+- WokWalkRoute
+- WokWalkLine
+
+### Предварительная проверка (быстрый скрининг, не юридическое заключение)
+
+Проверка сделана по:
+- WHOIS (`whois.verisign-grs.com`) по `.com`.
+- Поисковой выдаче и публичным сайтам (для явных совпадений бренда).
+
+Явно занятые/конфликтные короткие варианты:
+- `openwalk.com` — занято (создан 30 декабря 2008), страница `Coming Soon`.
+- `openwok.com` — занято (создан 10 марта 2007).
+- `wokwalk.com` — занято, активный ресторанный бренд.
+- `walkwok.com` — занято.
+- `openroute.com` — занято, активный корпоративный сайт.
+- `openhandoff.com` — занято, активный сервис.
+- `openintake.com` — занято.
+
+Свободные `.com` на момент проверки:
+- `wokroute.com`
+- `woklane.com`
+- `wokpath.com`
+- `wokhandoff.com`
+- `walkhandoff.com`
+- `wokwalker.com`
+- `wokwalks.com`
+- `openwalkapp.com`
+- `openwalkhub.com`
+- `openwalkflow.com`
+- `openwalkroute.com`
+- `openwalkline.com`
+- `openwalkpath.com`
+- `openwalkmap.com`
+- `openwalklab.com`
+- `openwalkworks.com`
+- `openwokapp.com`
+- `openwokhub.com`
+- `openwokline.com`
+- `openwoklane.com`
+- `openwokpath.com`
+- `openwoklab.com`
+- `openwokworks.com`
+- `openwokgo.com`
+- `openwonton.com`
+
+### Важные сигналы по бренду/поиску
+- `OpenWalk` может иметь сильный SEO-шум из fashion-категории (`Open Walk` как продуктовая линейка обуви), плюс домен уже занят.
+- `OpenWok` как слово уже встречается в сторонних проектах/пакетах (не обязательно прямой запрет, но сигнал к проверке).
+- `WokWalk`/`WalkWok` уже используются ресторанными проектами.
+
+### Рабочий вывод этого раунда
+- Если нужен короткий и реально живой путь, фокус лучше на свободных связках:
+- `WokRoute`, `WokPath`, `WokLane`, `WokHandoff`, `WalkHandoff`.
+- Если хочешь оставить `Open`, то почти наверняка придется брать 2-частную форму:
+- `OpenWalkApp`, `OpenWalkFlow`, `OpenWokLab`, `OpenWokWorks`.
+- `OpenWalk` и `OpenWok` как “чистые короткие” имена сейчас слабее из-за занятого `.com` и внешнего шума.
+
+### Ссылки для проверки (внешние)
+- `https://openwalk.com/`
+- `https://openwok.com/`
+- `https://www.wokwalk.com/`
+- `https://www.openhandoff.com/`
+- `https://docs.openwok.net/`
+- `https://us.loropiana.com/en/p/man/open-walk-ankle-boot-FAI1545`
+- `https://tmsearch.uspto.gov/`

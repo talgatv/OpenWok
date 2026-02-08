@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Monte Carlo simulator for service cost per order and business models."""
-
 import argparse
 import csv
 import json
@@ -10,12 +9,8 @@ import statistics
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
-
-
 def clamp(value: float, min_value: float, max_value: float) -> float:
     return max(min_value, min(max_value, value))
-
-
 def truncated_normal(mean: float, stddev: float, min_value: float, max_value: float) -> float:
     if stddev <= 0:
         return clamp(mean, min_value, max_value)
@@ -24,16 +19,12 @@ def truncated_normal(mean: float, stddev: float, min_value: float, max_value: fl
         if min_value <= value <= max_value:
             return value
     return clamp(mean, min_value, max_value)
-
-
 def sample_orders(mean: float, volatility: float) -> int:
     if mean <= 0:
         return 0
     stddev = max(1.0, mean * volatility)
     value = random.gauss(mean, stddev)
     return max(0, int(round(value)))
-
-
 def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     result: Dict[str, Any] = dict(base)
     for key, value in override.items():
@@ -42,8 +33,6 @@ def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]
         else:
             result[key] = value
     return result
-
-
 def get_scenarios(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     scenarios = config.get("scenarios")
     base = {k: v for k, v in config.items() if k != "scenarios"}
@@ -59,8 +48,6 @@ def get_scenarios(config: Dict[str, Any]) -> List[Dict[str, Any]]:
         }
         result.append(merged)
     return result
-
-
 def percentile(sorted_values: List[float], p: float) -> float:
     if not sorted_values:
         return 0.0
@@ -72,8 +59,6 @@ def percentile(sorted_values: List[float], p: float) -> float:
     if f == c:
         return sorted_values[int(k)]
     return sorted_values[f] + (sorted_values[c] - sorted_values[f]) * (k - f)
-
-
 def summarize(values: List[float]) -> Dict[str, float]:
     if not values:
         return {
@@ -93,15 +78,11 @@ def summarize(values: List[float]) -> Dict[str, float]:
         "min": values_sorted[0],
         "max": values_sorted[-1],
     }
-
-
 def compute_fixed_costs(config: Dict[str, Any], days: int) -> float:
     fixed = config.get("fixed_costs", {})
     monthly = sum(fixed.get("monthly", {}).values())
     annual = sum(fixed.get("annual", {}).values())
     return monthly * (days / 30.0) + annual * (days / 365.0)
-
-
 def compute_subscription_revenue(model: Dict[str, Any], cities: List[Dict[str, Any]], days: int) -> float:
     if model.get("type") != "subscription":
         return 0.0
@@ -115,8 +96,6 @@ def compute_subscription_revenue(model: Dict[str, Any], cities: List[Dict[str, A
         subscribed += restaurants * share
     months = days / 30.0
     return subscribed * monthly_fee * months
-
-
 def order_revenue(model: Dict[str, Any], order_value: float) -> float:
     model_type = model.get("type")
     if model_type == "fixed":
@@ -129,7 +108,6 @@ def order_revenue(model: Dict[str, Any], order_value: float) -> float:
         revenue = float(model.get("per_order_fee_usd", 0.0))
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
-
     min_fee = model.get("min_fee_usd")
     max_fee = model.get("max_fee_usd")
     if min_fee is not None:
@@ -137,18 +115,14 @@ def order_revenue(model: Dict[str, Any], order_value: float) -> float:
     if max_fee is not None:
         revenue = min(revenue, float(max_fee))
     return revenue
-
-
 def compute_break_even_pricing(report: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
     sim = report["simulation"]
     orders_mean = sim["orders"]["mean"]
     total_cost_mean = sim["variable_cost_usd"]["mean"] + sim["fixed_cost_usd"]["mean"]
     cost_per_order = total_cost_mean / orders_mean if orders_mean else 0.0
     avg_order_value = report["average_order_value_usd"]["mean"]
-
     fixed_fee = cost_per_order
     percent_fee = cost_per_order / avg_order_value if avg_order_value else 0.0
-
     hybrid_model = next((m for m in config["business_models"] if m.get("type") == "hybrid"), None)
     hybrid_fixed = 0.0
     hybrid_percent = 0.0
@@ -160,7 +134,6 @@ def compute_break_even_pricing(report: Dict[str, Any], config: Dict[str, Any]) -
         hybrid_fixed_at_percent = cost_per_order - hybrid_percent * avg_order_value
         if avg_order_value:
             hybrid_percent_at_fixed = (cost_per_order - hybrid_fixed) / avg_order_value
-
     subscription_model = next((m for m in config["business_models"] if m.get("type") == "subscription"), None)
     monthly_fee = 0.0
     per_order_fee = 0.0
@@ -179,7 +152,6 @@ def compute_break_even_pricing(report: Dict[str, Any], config: Dict[str, Any]) -
             monthly_needed = (total_cost_mean - per_order_fee * orders_mean) / (subscribed * months)
         if orders_mean > 0:
             per_order_needed = (total_cost_mean - monthly_fee * subscribed * months) / orders_mean
-
     return {
         "assumptions": {
             "orders_mean": orders_mean,
@@ -205,8 +177,6 @@ def compute_break_even_pricing(report: Dict[str, Any], config: Dict[str, Any]) -
             "per_order_fee_usd": per_order_needed,
         },
     }
-
-
 def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
     simulation = config["simulation"]
     demand = config["demand"]
@@ -216,27 +186,22 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
     costs = config["costs"]
     payment = config.get("payment_processor", {})
     cities = config["cities"]
-
     days = int(simulation["days"])
     weekday_multipliers = demand.get("weekday_multipliers", [1.0] * 7)
     order_volatility = float(demand.get("order_volatility", 0.2))
-
     tracking_updates_multiplier = float(usage_multipliers.get("tracking_updates_multiplier", 1.0))
     support_rate_multiplier = float(usage_multipliers.get("support_rate_multiplier", 1.0))
     map_requests_multiplier = float(usage_multipliers.get("map_requests_multiplier", 1.0))
     api_requests_multiplier = float(usage_multipliers.get("api_requests_multiplier", 1.0))
     ml_calls_multiplier = float(usage_multipliers.get("ml_calls_multiplier", 1.0))
-
     map_retry_rate = float(failure_rates.get("map_retry_rate", 0.0))
     api_retry_rate = float(failure_rates.get("api_retry_rate", 0.0))
     ml_retry_rate = float(failure_rates.get("ml_retry_rate", 0.0))
     notification_retry_rate = float(failure_rates.get("notification_retry_rate", 0.0))
     support_escalation_rate = float(failure_rates.get("support_escalation_rate", 0.0))
-
     payment_include = bool(payment.get("include_in_costs", False))
     payment_percent = float(payment.get("percent_fee", 0.0))
     payment_fixed = float(payment.get("fixed_fee_usd", 0.0))
-
     counts = {
         "orders": 0,
         "tracking_updates": 0,
@@ -258,9 +223,7 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
             "orders": 0,
             "variable_cost_usd": 0.0,
         }
-
     model_totals = {model["name"]: {"revenue": 0.0, "orders": 0} for model in config["business_models"]}
-
     for day in range(days):
         day_multiplier = weekday_multipliers[day % len(weekday_multipliers)]
         for city in cities:
@@ -277,25 +240,21 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
                     value_cfg["min"],
                     value_cfg["max"],
                 )
-
                 avg_minutes = float(city["avg_delivery_minutes"])
                 updates_per_min = float(city["tracking_updates_per_min"]) * tracking_updates_multiplier
                 traffic_multiplier = float(usage.get("tracking_traffic_multiplier", 0.0))
                 jitter = float(usage.get("tracking_jitter", 0.0))
                 updates_mean = avg_minutes * updates_per_min * (1.0 + city["traffic_index"] * traffic_multiplier)
                 updates = max(1, int(round(truncated_normal(updates_mean, updates_mean * jitter, 1, updates_mean * 3))))
-
                 complexity_multiplier = float(usage.get("map_complexity_multiplier", 0.0))
                 map_requests = float(usage["base_map_requests"]) + (
                     updates * float(usage["map_requests_per_tracking_update"]) * (1.0 + city["complexity_index"] * complexity_multiplier)
                 )
                 map_requests *= map_requests_multiplier
                 map_requests *= 1.0 + map_retry_rate
-
                 api_requests = float(usage["base_api_requests"]) + updates * float(usage["api_requests_per_tracking_update"])
                 api_requests *= api_requests_multiplier
                 api_requests *= 1.0 + api_retry_rate
-
                 support_ticket_rate = (
                     float(usage["support_ticket_rate"]) * float(city.get("support_rate_multiplier", 1.0)) * support_rate_multiplier
                 )
@@ -310,28 +269,23 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
                         support_cfg["max"],
                     )
                     support_minutes *= 1.0 + support_escalation_rate
-
                 ml_calls = float(usage["base_ml_calls"])
                 if has_support:
                     ml_calls += float(usage["ml_calls_per_support_ticket"])
                 ml_calls *= ml_calls_multiplier
                 ml_calls *= 1.0 + ml_retry_rate
-
                 notification_cfg = usage["notification"]
                 push_count = float(notification_cfg["push_count"]) * (1.0 + notification_retry_rate)
                 sms_count = 1.0 if random.random() < float(notification_cfg["sms_rate"]) else 0.0
                 email_count = 1.0 if random.random() < float(notification_cfg["email_rate"]) else 0.0
                 sms_count *= 1.0 + notification_retry_rate
                 email_count *= 1.0 + notification_retry_rate
-
                 data_cfg = usage["data_mb"]
                 data_mb = float(data_cfg["base_order_mb"]) + updates * float(data_cfg["tracking_update_mb"])
                 data_gb = data_mb / 1024.0
-
                 payment_fee = 0.0
                 if payment_include:
                     payment_fee = order_value * payment_percent + payment_fixed
-
                 counts["orders"] += 1
                 counts["tracking_updates"] += updates
                 counts["map_requests"] += map_requests
@@ -345,7 +299,6 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
                 counts["data_gb"] += data_gb
                 counts["order_value_usd"] += order_value
                 counts["payment_fees_usd"] += payment_fee
-
                 order_variable_cost = (
                     map_requests * costs["map_request_usd"]
                     + api_requests * costs["api_request_usd"]
@@ -358,14 +311,11 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
                     + payment_fee
                 )
                 city_stats[city_name]["variable_cost_usd"] += order_variable_cost
-
                 for model in config["business_models"]:
                     revenue = order_revenue(model, order_value)
                     model_totals[model["name"]]["revenue"] += revenue
                     model_totals[model["name"]]["orders"] += 1
-
             city_stats[city_name]["orders"] += orders_today
-
     cost_breakdown = {
         "map_cost_usd": counts["map_requests"] * costs["map_request_usd"],
         "api_cost_usd": counts["api_requests"] * costs["api_request_usd"],
@@ -377,10 +327,8 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
         "storage_cost_usd": counts["data_gb"] * costs["storage_gb_usd"],
         "payment_fees_usd": counts["payment_fees_usd"],
     }
-
     variable_cost = sum(cost_breakdown.values())
     fixed_cost = compute_fixed_costs(config, days)
-
     orders_total = counts["orders"]
     average_order_value = counts["order_value_usd"] / orders_total if orders_total else 0.0
     usage_per_order = {
@@ -395,7 +343,6 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
         "support_tickets": counts["support_tickets"] / orders_total if orders_total else 0.0,
         "data_gb": counts["data_gb"] / orders_total if orders_total else 0.0,
     }
-
     model_results: Dict[str, Dict[str, float]] = {}
     for model in config["business_models"]:
         model_name = model["name"]
@@ -413,7 +360,6 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
             "cost_per_order_usd": cost_per_order,
             "margin": margin,
         }
-
     return {
         "counts": counts,
         "variable_cost_usd": variable_cost,
@@ -424,14 +370,11 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
         "models": model_results,
         "city_stats": city_stats,
     }
-
-
 def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
     simulation = config["simulation"]
     runs = int(simulation["runs"])
     costs = config["costs"]
     payment = config.get("payment_processor", {})
-
     model_names = [model["name"] for model in config["business_models"]]
     model_metrics = {
         name: {
@@ -461,10 +404,8 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         "data_gb": [],
     }
     city_rollups: Dict[str, Dict[str, List[float]]] = {}
-
     for city in config["cities"]:
         city_rollups[city["name"]] = {"orders": [], "cost_per_order_usd": []}
-
     for _ in range(runs):
         run = simulate_run(config)
         orders = run["counts"]["orders"]
@@ -473,10 +414,8 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         fixed_costs.append(run["fixed_cost_usd"])
         avg_order_values.append(run["average_order_value_usd"])
         cost_breakdowns.append(run["cost_breakdown"])
-
         for key in usage_rollups:
             usage_rollups[key].append(run["usage_per_order"][key])
-
         for model_name in model_names:
             result = run["models"][model_name]
             model_metrics[model_name]["net_profit_usd"].append(result["net_profit_usd"])
@@ -484,20 +423,17 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
             model_metrics[model_name]["revenue_per_order_usd"].append(result["revenue_per_order_usd"])
             model_metrics[model_name]["cost_per_order_usd"].append(result["cost_per_order_usd"])
             model_metrics[model_name]["margin"].append(result["margin"])
-
         for city_name, stats in run["city_stats"].items():
             orders_city = stats["orders"]
             cost_city = stats["variable_cost_usd"] + (run["fixed_cost_usd"] * (orders_city / orders if orders else 0))
             cost_per_order = cost_city / orders_city if orders_city else 0.0
             city_rollups[city_name]["orders"].append(orders_city)
             city_rollups[city_name]["cost_per_order_usd"].append(cost_per_order)
-
     cost_breakdown_avg = {}
     if cost_breakdowns:
         keys = cost_breakdowns[0].keys()
         for key in keys:
             cost_breakdown_avg[key] = statistics.mean([c[key] for c in cost_breakdowns])
-
     usage_summary = {key: summarize(values) for key, values in usage_rollups.items()}
     avg_order_value_summary = summarize(avg_order_values)
     unit_costs = dict(costs)
@@ -509,7 +445,6 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         "failure_rates": config.get("failure_rates", {}),
         "payment_processor": payment,
     }
-
     model_summary = {}
     for model_name, metrics in model_metrics.items():
         net_profit_summary = summarize(metrics["net_profit_usd"])
@@ -527,14 +462,12 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
             "margin": margin_summary,
             "profitability_rate": profitability_rate,
         }
-
     city_summary = {}
     for city_name, series in city_rollups.items():
         city_summary[city_name] = {
             "orders": summarize(series["orders"]),
             "cost_per_order_usd": summarize(series["cost_per_order_usd"]),
         }
-
     best_model = None
     best_profit = None
     for model_name, summary in model_summary.items():
@@ -542,7 +475,6 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         if best_profit is None or mean_profit > best_profit:
             best_profit = mean_profit
             best_model = model_name
-
     report_stub = {
         "simulation": {
             "runs": runs,
@@ -554,7 +486,6 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         "average_order_value_usd": avg_order_value_summary,
     }
     break_even_pricing = compute_break_even_pricing(report_stub, config)
-
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "scenario": config.get("scenario", {"name": "base", "description": ""}),
@@ -573,8 +504,6 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         },
     }
     return report
-
-
 def run_all_scenarios(config: Dict[str, Any]) -> Dict[str, Any]:
     scenarios = get_scenarios(config)
     scenario_reports = {}
@@ -586,20 +515,15 @@ def run_all_scenarios(config: Dict[str, Any]) -> Dict[str, Any]:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "scenarios": scenario_reports,
     }
-
-
 def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, save_report: str) -> None:
     report_dir.mkdir(parents=True, exist_ok=True)
     json_path = Path(save_report) if save_report else report_dir / f"{report_name}.json"
     md_path = report_dir / f"{report_name}.md"
     csv_path = report_dir / f"{report_name}.csv"
-
     json_path.write_text(json.dumps(report, indent=2))
-
     scenarios = report.get("scenarios")
     if scenarios is None:
         scenarios = {"base": report}
-
     model_rows = []
     for scenario_name, scenario_report in scenarios.items():
         for model_name, summary in scenario_report["models"].items():
@@ -617,19 +541,16 @@ def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, sa
                     "profitability_rate": summary["profitability_rate"],
                 }
             )
-
     with csv_path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=model_rows[0].keys()) if model_rows else None
         if writer:
             writer.writeheader()
             writer.writerows(model_rows)
-
     lines = []
     lines.append("# Service Cost Simulation Report")
     lines.append("")
     lines.append(f"Generated at: {report['generated_at']}")
     lines.append("")
-
     for scenario_name, scenario_report in scenarios.items():
         scenario_info = scenario_report.get("scenario", {})
         description = scenario_info.get("description", "")
@@ -637,7 +558,6 @@ def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, sa
         if description:
             lines.append(f"Description: {description}")
         lines.append("")
-
         sim = scenario_report["simulation"]
         lines.append("### Simulation Summary")
         lines.append("")
@@ -648,7 +568,6 @@ def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, sa
         lines.append(f"Variable cost per run (mean): ${sim['variable_cost_usd']['mean']:.2f}")
         lines.append(f"Fixed cost per run (mean): ${sim['fixed_cost_usd']['mean']:.2f}")
         lines.append("")
-
         unit_costs = scenario_report.get("unit_costs", {})
         lines.append("### Unit Costs")
         lines.append("")
@@ -662,7 +581,94 @@ def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, sa
         lines.append(f"| Email | ${unit_costs.get('email_usd', 0):.6f} |")
         lines.append(f"| Support minute | ${unit_costs.get('support_minute_usd', 0):.2f} |")
         lines.append(f"| Storage (GB) | ${unit_costs.get('storage_gb_usd', 0):.4f} |")
-        lines.append(\n            f\"| Payment fee | {unit_costs.get('payment_percent_fee', 0) * 100:.2f}% + ${unit_costs.get('payment_fixed_fee_usd', 0):.2f} |\"\n        )\n        lines.append(\"\")\n\n        usage = scenario_report[\"usage_per_order\"]\n        lines.append(\"### Usage Per Order (Mean/P10/P90)\")\n        lines.append(\"\")\n        lines.append(\"| Metric | Mean | P10 | P90 |\")\n        lines.append(\"| --- | --- | --- | --- |\")\n        for key, summary in usage.items():\n            lines.append(\n                \"| {key} | {mean:.2f} | {p10:.2f} | {p90:.2f} |\".format(\n                    key=key,\n                    mean=summary[\"mean\"],\n                    p10=summary[\"p10\"],\n                    p90=summary[\"p90\"],\n                )\n            )\n        lines.append(\"\")\n\n        lines.append(\"### Average Cost Breakdown\")\n        lines.append(\"\")\n        for key, value in scenario_report[\"cost_breakdown_avg_usd\"].items():\n            lines.append(f\"- {key}: ${value:.2f}\")\n        lines.append(\"\")\n\n        lines.append(\"### Business Model Comparison\")\n        lines.append(\"\")\n        lines.append(\"| Model | Net Profit Mean | Net Profit P10 | Net Profit P90 | Revenue Mean | Cost/Order Mean | Revenue/Order Mean | Margin Mean | Profitability Rate |\")\n        lines.append(\"| --- | --- | --- | --- | --- | --- | --- | --- | --- |\")\n        for row in [r for r in model_rows if r[\"scenario\"] == scenario_name]:\n            lines.append(\n                \"| {model} | ${net_profit_mean:.2f} | ${net_profit_p10:.2f} | ${net_profit_p90:.2f} | ${revenue_mean:.2f} | ${cost_per_order_mean:.2f} | ${revenue_per_order_mean:.2f} | {margin_mean:.2%} | {profitability_rate:.2%} |\".format(\n                    **row\n                )\n            )\n        lines.append(\"\")\n\n        break_even = scenario_report.get(\"break_even_pricing\", {})\n        if break_even:\n            lines.append(\"### Break-even Pricing\")\n            lines.append(\"\")\n            lines.append(f\"- Fixed fee break-even: ${break_even['fixed_fee_usd']:.2f}\")\n            lines.append(f\"- Percent break-even: {break_even['percent_of_order'] * 100:.2f}%\")\n            lines.append(\n                \"- Hybrid break-even at percent {percent:.2%}: fixed ${fixed_fee_usd:.2f}\".format(\n                    **break_even[\"hybrid_fixed_usd_at_percent\"]\n                )\n            )\n            lines.append(\n                \"- Hybrid break-even at fixed ${fixed_fee_usd:.2f}: percent {percent:.2%}\".format(\n                    **break_even[\"hybrid_percent_at_fixed\"]\n                )\n            )\n            lines.append(\n                \"- Subscription break-even at per-order ${per_order_fee_usd:.2f}: monthly ${monthly_fee_usd:.2f}\".format(\n                    **break_even[\"subscription_monthly_fee_usd_at_per_order\"]\n                )\n            )\n            lines.append(\n                \"- Subscription break-even at monthly ${monthly_fee_usd:.2f}: per-order ${per_order_fee_usd:.2f}\".format(\n                    **break_even[\"subscription_per_order_fee_usd_at_monthly\"]\n                )\n            )\n            lines.append(\"\")\n\n        lines.append(\"### City Cost Per Order\")\n        lines.append(\"\")\n        lines.append(\"| City | Orders Mean | Cost/Order Mean | Cost/Order P10 | Cost/Order P90 |\")\n        lines.append(\"| --- | --- | --- | --- | --- |\")\n        for city_name, summary in scenario_report[\"city_summary\"].items():\n            lines.append(\n                \"| {city} | {orders_mean:.2f} | ${cost_mean:.2f} | ${cost_p10:.2f} | ${cost_p90:.2f} |\".format(\n                    city=city_name,\n                    orders_mean=summary[\"orders\"][\"mean\"],\n                    cost_mean=summary[\"cost_per_order_usd\"][\"mean\"],\n                    cost_p10=summary[\"cost_per_order_usd\"][\"p10\"],\n                    cost_p90=summary[\"cost_per_order_usd\"][\"p90\"],\n                )\n            )\n        lines.append(\"\")\n\n        rec = scenario_report[\"recommendation\"]\n        lines.append(\"### Recommendation\")\n        lines.append(\"\")\n        if rec[\"best_model_by_mean_profit\"]:\n            lines.append(\n                f\"Best model by mean profit: {rec['best_model_by_mean_profit']} (${'{:.2f}'.format(rec['best_model_mean_profit_usd'])}).\"\n            )\n        else:\n            lines.append(\"No clear best model computed.\")\n        lines.append(\"\")\n\n    md_path.write_text(\"\\n\".join(lines))\n*** End Patch"}}
+        lines.append(
+            f"| Payment fee | {unit_costs.get('payment_percent_fee', 0) * 100:.2f}% + ${unit_costs.get('payment_fixed_fee_usd', 0):.2f} |"
+        )
+        lines.append("")
+        usage = scenario_report["usage_per_order"]
+        lines.append("### Usage Per Order (Mean/P10/P90)")
+        lines.append("")
+        lines.append("| Metric | Mean | P10 | P90 |")
+        lines.append("| --- | --- | --- | --- |")
+        for key, summary in usage.items():
+            lines.append(
+                "| {key} | {mean:.2f} | {p10:.2f} | {p90:.2f} |".format(
+                    key=key,
+                    mean=summary["mean"],
+                    p10=summary["p10"],
+                    p90=summary["p90"],
+                )
+            )
+        lines.append("")
+        lines.append("### Average Cost Breakdown")
+        lines.append("")
+        for key, value in scenario_report["cost_breakdown_avg_usd"].items():
+            lines.append(f"- {key}: ${value:.2f}")
+        lines.append("")
+        lines.append("### Business Model Comparison")
+        lines.append("")
+        lines.append("| Model | Net Profit Mean | Net Profit P10 | Net Profit P90 | Revenue Mean | Cost/Order Mean | Revenue/Order Mean | Margin Mean | Profitability Rate |")
+        lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+        for row in [r for r in model_rows if r["scenario"] == scenario_name]:
+            lines.append(
+                "| {model} | ${net_profit_mean:.2f} | ${net_profit_p10:.2f} | ${net_profit_p90:.2f} | ${revenue_mean:.2f} | ${cost_per_order_mean:.2f} | ${revenue_per_order_mean:.2f} | {margin_mean:.2%} | {profitability_rate:.2%} |".format(
+                    **row
+                )
+            )
+        lines.append("")
+        break_even = scenario_report.get("break_even_pricing", {})
+        if break_even:
+            lines.append("### Break-even Pricing")
+            lines.append("")
+            lines.append(f"- Fixed fee break-even: ${break_even['fixed_fee_usd']:.2f}")
+            lines.append(f"- Percent break-even: {break_even['percent_of_order'] * 100:.2f}%")
+            lines.append(
+                "- Hybrid break-even at percent {percent:.2%}: fixed ${fixed_fee_usd:.2f}".format(
+                    **break_even["hybrid_fixed_usd_at_percent"]
+                )
+            )
+            lines.append(
+                "- Hybrid break-even at fixed ${fixed_fee_usd:.2f}: percent {percent:.2%}".format(
+                    **break_even["hybrid_percent_at_fixed"]
+                )
+            )
+            lines.append(
+                "- Subscription break-even at per-order ${per_order_fee_usd:.2f}: monthly ${monthly_fee_usd:.2f}".format(
+                    **break_even["subscription_monthly_fee_usd_at_per_order"]
+                )
+            )
+            lines.append(
+                "- Subscription break-even at monthly ${monthly_fee_usd:.2f}: per-order ${per_order_fee_usd:.2f}".format(
+                    **break_even["subscription_per_order_fee_usd_at_monthly"]
+                )
+            )
+            lines.append("")
+        lines.append("### City Cost Per Order")
+        lines.append("")
+        lines.append("| City | Orders Mean | Cost/Order Mean | Cost/Order P10 | Cost/Order P90 |")
+        lines.append("| --- | --- | --- | --- | --- |")
+        for city_name, summary in scenario_report["city_summary"].items():
+            lines.append(
+                "| {city} | {orders_mean:.2f} | ${cost_mean:.2f} | ${cost_p10:.2f} | ${cost_p90:.2f} |".format(
+                    city=city_name,
+                    orders_mean=summary["orders"]["mean"],
+                    cost_mean=summary["cost_per_order_usd"]["mean"],
+                    cost_p10=summary["cost_per_order_usd"]["p10"],
+                    cost_p90=summary["cost_per_order_usd"]["p90"],
+                )
+            )
+        lines.append("")
+        rec = scenario_report["recommendation"]
+        lines.append("### Recommendation")
+        lines.append("")
+        if rec["best_model_by_mean_profit"]:
+            lines.append(
+                f"Best model by mean profit: {rec['best_model_by_mean_profit']} (${'{:.2f}'.format(rec['best_model_mean_profit_usd'])})."
+            )
+        else:
+            lines.append("No clear best model computed.")
+        lines.append("")
+    md_path.write_text("\n".join(lines))
 
 
 def parse_args() -> argparse.Namespace:
@@ -672,20 +678,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report-name", default=None, help="Report base name (without extension).")
     parser.add_argument("--save-report", default="", help="Optional explicit JSON report path.")
     return parser.parse_args()
-
-
 def main() -> None:
     args = parse_args()
     config_path = Path(args.config)
     config = json.loads(config_path.read_text())
-
     seed = config.get("simulation", {}).get("random_seed")
     if seed is not None:
         random.seed(seed)
-
     report_name = args.report_name or config.get("reporting", {}).get("report_name", "service_cost_report")
-    report = run_simulation(config)
-
+    report = run_all_scenarios(config)
     write_reports(report, Path(args.report_dir), report_name, args.save_report)
 
 

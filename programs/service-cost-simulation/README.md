@@ -26,9 +26,11 @@ python3 simulate.py --config config.json --report-dir reports --report-name serv
 
 ## What it calculates
 - Variable costs per order (maps, API, ML, notifications, support, storage).
+- Payment processor fees (optional, configurable).
 - Fixed costs allocated per order.
 - Cost per order (min/avg/max via Monte Carlo runs).
-- Business model revenue and net profit across scenarios.
+- Business model revenue and net profit across scenarios (budget/standard/premium).
+- Break-even pricing suggestions for fixed/percent/hybrid/subscription models.
 - City-level cost per order.
 
 ## Main config groups
@@ -36,9 +38,13 @@ python3 simulate.py --config config.json --report-dir reports --report-name serv
 - `demand`: weekday multipliers and order volatility.
 - `cities`: demand, traffic, complexity, order values, subscription participation.
 - `usage`: tracking updates, map/API calls, support rates, notifications, data sizes.
+- `usage_multipliers`: scenario-level multipliers for usage and support rates.
+- `failure_rates`: retry/escalation rates (adds extra cost).
 - `costs`: unit costs for each service.
+- `payment_processor`: percent + fixed fee per transaction.
 - `fixed_costs`: monthly and annual overhead.
 - `business_models`: fixed, percent, hybrid, subscription rules.
+- `scenarios`: override blocks for budget/standard/premium cost and usage profiles.
 
 ## Notes
 - Default numbers are placeholders for tuning.
