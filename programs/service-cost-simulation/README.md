@@ -31,6 +31,7 @@ python3 simulate.py --config config.json --report-dir reports --report-name serv
 - Cost per order (min/avg/max via Monte Carlo runs).
 - Business model revenue and net profit across scenarios (budget/standard/premium).
 - Break-even pricing suggestions for fixed/percent/hybrid/subscription models.
+- Fixed-fee guidance tiers (`self_cost`, `sustainable`, `growth`) and one portfolio-level fixed recommendation.
 - City-level cost per order.
 
 ## Main config groups
@@ -45,6 +46,7 @@ python3 simulate.py --config config.json --report-dir reports --report-name serv
 - `fixed_costs`: monthly and annual overhead.
 - `business_models`: fixed, percent, hybrid, subscription rules.
 - `scenarios`: override blocks for budget/standard/premium cost and usage profiles.
+- `fixed_pricing_policy`: rounding, risk buffer, margin tiers, scenario weights, and recommended fixed tier.
 
 ## Notes
 - Default numbers are placeholders for tuning.

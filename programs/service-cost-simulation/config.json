@@ -254,6 +254,21 @@
       }
     }
   ],
+  "fixed_pricing_policy": {
+    "rounding_step_usd": 0.05,
+    "risk_buffer_from_p90": 0.35,
+    "target_margin_rates": {
+      "self_cost": 0.0,
+      "sustainable": 0.08,
+      "growth": 0.18
+    },
+    "scenario_weights": {
+      "budget": 0.25,
+      "standard": 0.55,
+      "premium": 0.2
+    },
+    "recommended_tier": "sustainable"
+  },
   "reporting": {
     "currency": "USD",
     "report_name": "service_cost_report"

@@ -78,6 +78,146 @@ def summarize(values: List[float]) -> Dict[str, float]:
         "min": values_sorted[0],
         "max": values_sorted[-1],
     }
+
+
+def round_up_to_step(value: float, step: float) -> float:
+    if step <= 0:
+        return value
+    return math.ceil(value / step) * step
+
+
+def normalize_weights(weights: Dict[str, float], keys: List[str]) -> Dict[str, float]:
+    selected = {key: max(0.0, float(weights.get(key, 0.0))) for key in keys}
+    total = sum(selected.values())
+    if total <= 0:
+        return {key: 1.0 / len(keys) for key in keys} if keys else {}
+    return {key: value / total for key, value in selected.items()}
+
+
+def get_fixed_pricing_policy(config: Dict[str, Any]) -> Dict[str, Any]:
+    default = {
+        "rounding_step_usd": 0.05,
+        "risk_buffer_from_p90": 0.35,
+        "target_margin_rates": {
+            "self_cost": 0.0,
+            "sustainable": 0.08,
+            "growth": 0.18,
+        },
+        "scenario_weights": {},
+        "recommended_tier": "sustainable",
+    }
+    return deep_merge(default, config.get("fixed_pricing_policy", {}))
+
+
+def compute_fixed_cost_breakdown(config: Dict[str, Any], days: int) -> Dict[str, Any]:
+    fixed = config.get("fixed_costs", {})
+    monthly_scaled = {
+        key: float(value) * (days / 30.0) for key, value in fixed.get("monthly", {}).items()
+    }
+    annual_scaled = {
+        key: float(value) * (days / 365.0) for key, value in fixed.get("annual", {}).items()
+    }
+    return {
+        "monthly_scaled_usd": monthly_scaled,
+        "annual_scaled_usd": annual_scaled,
+        "monthly_total_usd": sum(monthly_scaled.values()),
+        "annual_total_usd": sum(annual_scaled.values()),
+        "total_usd": sum(monthly_scaled.values()) + sum(annual_scaled.values()),
+    }
+
+
+def compute_fixed_fee_guidance(
+    cost_per_order: Dict[str, float],
+    orders_mean: float,
+    policy: Dict[str, Any],
+) -> Dict[str, Any]:
+    cost_mean = float(cost_per_order.get("mean", 0.0))
+    cost_p90 = float(cost_per_order.get("p90", cost_mean))
+    risk_buffer = float(policy.get("risk_buffer_from_p90", 0.35))
+    base_cost = cost_mean + max(0.0, cost_p90 - cost_mean) * risk_buffer
+    rounding_step = float(policy.get("rounding_step_usd", 0.05))
+    tiers = {}
+    for tier_name, margin_rate in policy.get("target_margin_rates", {}).items():
+        margin = float(margin_rate)
+        fee = round_up_to_step(base_cost * (1.0 + margin), rounding_step)
+        reserve_per_order = fee - cost_mean
+        tiers[tier_name] = {
+            "fee_usd": fee,
+            "target_margin_rate": margin,
+            "estimated_margin_at_mean_cost": reserve_per_order / fee if fee else 0.0,
+            "estimated_monthly_net_usd": reserve_per_order * orders_mean,
+            "mean_cost_gap_usd": fee - cost_mean,
+            "p90_cost_gap_usd": fee - cost_p90,
+        }
+    return {
+        "inputs": {
+            "cost_mean_usd": cost_mean,
+            "cost_p90_usd": cost_p90,
+            "orders_mean": orders_mean,
+            "risk_buffer_from_p90": risk_buffer,
+            "rounding_step_usd": rounding_step,
+        },
+        "tiers": tiers,
+    }
+
+
+def compute_portfolio_fixed_fee_guidance(report: Dict[str, Any], policy: Dict[str, Any]) -> Dict[str, Any]:
+    scenarios = report.get("scenarios", {})
+    scenario_names = list(scenarios.keys())
+    if not scenario_names:
+        return {
+            "weights": {},
+            "tiers": {},
+            "recommended_tier": policy.get("recommended_tier", "sustainable"),
+            "recommended_fee_usd": 0.0,
+        }
+    weights = normalize_weights(policy.get("scenario_weights", {}), scenario_names)
+    rounding_step = float(policy.get("rounding_step_usd", 0.05))
+    risk_buffer = float(policy.get("risk_buffer_from_p90", 0.35))
+    tier_results = {}
+    for tier_name, margin_rate in policy.get("target_margin_rates", {}).items():
+        weighted_cost_mean = 0.0
+        weighted_cost_p90 = 0.0
+        weighted_orders = 0.0
+        for scenario_name, scenario_report in scenarios.items():
+            weight = weights[scenario_name]
+            weighted_cost_mean += (
+                float(scenario_report["cost_per_order_usd"]["mean"]) * weight
+            )
+            weighted_cost_p90 += (
+                float(scenario_report["cost_per_order_usd"]["p90"]) * weight
+            )
+            weighted_orders += (
+                float(scenario_report["simulation"]["orders"]["mean"]) * weight
+            )
+        base_cost = weighted_cost_mean + max(0.0, weighted_cost_p90 - weighted_cost_mean) * risk_buffer
+        fee = round_up_to_step(base_cost * (1.0 + float(margin_rate)), rounding_step)
+        by_scenario = {}
+        for scenario_name, scenario_report in scenarios.items():
+            cost_mean = float(scenario_report["cost_per_order_usd"]["mean"])
+            orders_mean = float(scenario_report["simulation"]["orders"]["mean"])
+            net_usd = (fee - cost_mean) * orders_mean
+            by_scenario[scenario_name] = {
+                "net_profit_mean_usd": net_usd,
+                "margin_at_mean_cost": (fee - cost_mean) / fee if fee else 0.0,
+            }
+        tier_results[tier_name] = {
+            "fee_usd": fee,
+            "target_margin_rate": float(margin_rate),
+            "weighted_cost_mean_usd": weighted_cost_mean,
+            "weighted_cost_p90_usd": weighted_cost_p90,
+            "weighted_orders_mean": weighted_orders,
+            "weighted_net_profit_mean_usd": (fee - weighted_cost_mean) * weighted_orders,
+            "by_scenario": by_scenario,
+        }
+    recommended_tier = policy.get("recommended_tier", "sustainable")
+    recommended_fee = tier_results.get(recommended_tier, {}).get("fee_usd", 0.0)
+    return {
+        "weights": weights,
+        "tiers": tier_results,
+        "recommended_tier": recommended_tier,
+        "recommended_fee_usd": recommended_fee,
+    }
 def compute_fixed_costs(config: Dict[str, Any], days: int) -> float:
     fixed = config.get("fixed_costs", {})
     monthly = sum(fixed.get("monthly", {}).values())
@@ -373,8 +513,10 @@ def simulate_run(config: Dict[str, Any]) -> Dict[str, Any]:
 def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
     simulation = config["simulation"]
     runs = int(simulation["runs"])
+    days = int(simulation["days"])
     costs = config["costs"]
     payment = config.get("payment_processor", {})
+    fixed_policy = get_fixed_pricing_policy(config)
     model_names = [model["name"] for model in config["business_models"]]
     model_metrics = {
         name: {
@@ -475,6 +617,10 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         if best_profit is None or mean_profit > best_profit:
             best_profit = mean_profit
             best_model = model_name
+    cost_per_order_series = (
+        model_metrics[model_names[0]]["cost_per_order_usd"] if model_names else []
+    )
+    cost_per_order_summary = summarize(cost_per_order_series)
     report_stub = {
         "simulation": {
             "runs": runs,
@@ -486,11 +632,19 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         "average_order_value_usd": avg_order_value_summary,
     }
     break_even_pricing = compute_break_even_pricing(report_stub, config)
+    fixed_cost_breakdown = compute_fixed_cost_breakdown(config, days)
+    fixed_fee_guidance = compute_fixed_fee_guidance(
+        cost_per_order_summary,
+        float(report_stub["simulation"]["orders"]["mean"]),
+        fixed_policy,
+    )
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "scenario": config.get("scenario", {"name": "base", "description": ""}),
         "simulation": report_stub["simulation"],
+        "cost_per_order_usd": cost_per_order_summary,
         "cost_breakdown_avg_usd": cost_breakdown_avg,
+        "fixed_cost_breakdown_usd": fixed_cost_breakdown,
         "usage_per_order": usage_summary,
         "average_order_value_usd": avg_order_value_summary,
         "unit_costs": unit_costs,
@@ -498,6 +652,7 @@ def run_simulation(config: Dict[str, Any]) -> Dict[str, Any]:
         "models": model_summary,
         "city_summary": city_summary,
         "break_even_pricing": break_even_pricing,
+        "fixed_fee_guidance": fixed_fee_guidance,
         "recommendation": {
             "best_model_by_mean_profit": best_model,
             "best_model_mean_profit_usd": best_profit if best_profit is not None else 0.0,
@@ -511,9 +666,16 @@ def run_all_scenarios(config: Dict[str, Any]) -> Dict[str, Any]:
         scenario_report = run_simulation(scenario_config)
         scenario_name = scenario_report.get("scenario", {}).get("name", "scenario")
         scenario_reports[scenario_name] = scenario_report
+    fixed_policy = get_fixed_pricing_policy(config)
+    portfolio_fixed_fee_guidance = compute_portfolio_fixed_fee_guidance(
+        {"scenarios": scenario_reports},
+        fixed_policy,
+    )
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "scenarios": scenario_reports,
+        "fixed_pricing_policy": fixed_policy,
+        "portfolio_fixed_fee_guidance": portfolio_fixed_fee_guidance,
     }
 def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, save_report: str) -> None:
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -551,6 +713,28 @@ def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, sa
     lines.append("")
     lines.append(f"Generated at: {report['generated_at']}")
     lines.append("")
+    portfolio = report.get("portfolio_fixed_fee_guidance", {})
+    if portfolio:
+        lines.append("## Portfolio Fixed Fee Recommendation")
+        lines.append("")
+        lines.append(
+            f"Recommended tier: {portfolio.get('recommended_tier', 'sustainable')}"
+        )
+        lines.append(
+            f"Recommended single fixed fee: ${portfolio.get('recommended_fee_usd', 0.0):.2f}"
+        )
+        lines.append("")
+        lines.append("| Tier | Suggested Fixed Fee | Weighted Net Profit Mean |")
+        lines.append("| --- | --- | --- |")
+        for tier_name, tier_data in portfolio.get("tiers", {}).items():
+            lines.append(
+                "| {tier} | ${fee:.2f} | ${net:.2f} |".format(
+                    tier=tier_name,
+                    fee=tier_data.get("fee_usd", 0.0),
+                    net=tier_data.get("weighted_net_profit_mean_usd", 0.0),
+                )
+            )
+        lines.append("")
     for scenario_name, scenario_report in scenarios.items():
         scenario_info = scenario_report.get("scenario", {})
         description = scenario_info.get("description", "")
@@ -604,6 +788,36 @@ def write_reports(report: Dict[str, Any], report_dir: Path, report_name: str, sa
         lines.append("")
         for key, value in scenario_report["cost_breakdown_avg_usd"].items():
             lines.append(f"- {key}: ${value:.2f}")
+        lines.append("")
+        fixed_breakdown = scenario_report.get("fixed_cost_breakdown_usd", {})
+        lines.append("### Fixed Cost Structure")
+        lines.append("")
+        lines.append("| Cost Item | USD per Period |")
+        lines.append("| --- | --- |")
+        for key, value in fixed_breakdown.get("monthly_scaled_usd", {}).items():
+            lines.append(f"| monthly.{key} | ${value:.2f} |")
+        for key, value in fixed_breakdown.get("annual_scaled_usd", {}).items():
+            lines.append(f"| annual.{key} | ${value:.2f} |")
+        lines.append(
+            f"| total_fixed_cost | ${fixed_breakdown.get('total_usd', 0.0):.2f} |"
+        )
+        lines.append("")
+        fixed_guidance = scenario_report.get("fixed_fee_guidance", {})
+        lines.append("### Fixed Fee Guidance")
+        lines.append("")
+        lines.append("| Tier | Suggested Fixed Fee | Est. Margin | Est. Net per Period | Gap vs Mean Cost | Gap vs P90 Cost |")
+        lines.append("| --- | --- | --- | --- | --- | --- |")
+        for tier_name, tier_data in fixed_guidance.get("tiers", {}).items():
+            lines.append(
+                "| {tier} | ${fee:.2f} | {margin:.2%} | ${net:.2f} | ${mean_gap:.2f} | ${p90_gap:.2f} |".format(
+                    tier=tier_name,
+                    fee=tier_data.get("fee_usd", 0.0),
+                    margin=tier_data.get("estimated_margin_at_mean_cost", 0.0),
+                    net=tier_data.get("estimated_monthly_net_usd", 0.0),
+                    mean_gap=tier_data.get("mean_cost_gap_usd", 0.0),
+                    p90_gap=tier_data.get("p90_cost_gap_usd", 0.0),
+                )
+            )
         lines.append("")
         lines.append("### Business Model Comparison")
         lines.append("")

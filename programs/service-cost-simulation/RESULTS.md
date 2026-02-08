@@ -1,66 +1,55 @@
-# Service Cost Simulation — Выводы
+# Service Cost Simulation - Fixed Fee Focus
 
-Источник данных: `reports/service_cost_report.json` (генерация: 2026-02-08T03:06:52.097849+00:00).
+Source: `reports/service_cost_report.json` (generated at `2026-02-08T03:17:37.280949+00:00`).
 
-## Сводка по сценариям
+## Portfolio Decision
 
-| Scenario | Cost/Order Mean | Best Model | Best Model Mean Profit | Fixed Break-even | Percent Break-even |
+- Recommended tier: `sustainable`
+- Recommended single fixed fee for all orders: **$3.60**
+- Why: covers mean service cost across mixed scenarios and leaves moderate buffer for team growth.
+
+| Tier | Suggested Fixed Fee | Weighted Net Profit Mean |
+| --- | --- | --- |
+| self_cost | $3.35 | $4,500.79 |
+| sustainable | $3.60 | $27,914.91 |
+| growth | $3.95 | $60,694.68 |
+
+## Scenario Cost Reality
+
+| Scenario | Cost per Order (Mean) | Cost per Order (P90) | Fixed Tier Self-cost | Fixed Tier Sustainable | Fixed Tier Growth |
 | --- | --- | --- | --- | --- | --- |
-| budget | $2.68 | fixed_fee_high | $6663.19 | $2.68 | 10.69% |
-| standard | $3.27 | fixed_fee_high | $-48365.89 | $3.27 | 13.04% |
-| premium | $4.18 | fixed_fee_high | $-133377.94 | $4.18 | 16.67% |
+| budget | $2.68 | $2.71 | $2.70 | $2.95 | $3.20 |
+| standard | $3.27 | $3.30 | $3.30 | $3.55 | $3.90 |
+| premium | $4.18 | $4.20 | $4.20 | $4.55 | $4.95 |
 
-## Основные драйверы затрат (mean)
+## Main Cost Drivers
 
-**budget**
-- payment_fees_usd: $86878.66
-- map_cost_usd: $54895.31
-- support_cost_usd: $15357.95
+- `map_cost_usd` and `payment_fees_usd` are the largest cost items in all scenarios.
+- `support_cost_usd` is the third largest recurring variable item.
+- Fixed overhead per 30-day period is **$92,520.55** and already includes accounting/legal/tax items.
 
-**standard**
-- map_cost_usd: $100216.65
-- payment_fees_usd: $96147.33
-- support_cost_usd: $14850.06
+## Accounting and Governance Transparency
 
-**premium**
-- map_cost_usd: $177544.30
-- payment_fees_usd: $100735.08
-- support_cost_usd: $16695.76
+Fixed overhead currently included in simulation:
+- Monthly: salaries, base infra, app maintenance, compliance, tools, accounting, legal, HR ops.
+- Annual (allocated to period): year-end accounting, security audit, company registration, tax filing.
 
-## Рекомендации по тарифам (безубыточность)
+This setup is aligned with an open-book model because fixed overhead and variable service costs are explicit and traceable.
 
-**budget**
-- Fixed fee: $2.68
-- Percent: 10.69%
-- Hybrid (percent 3.50%): fixed $1.80
-- Hybrid (fixed $1.40): percent 5.10%
-- Subscription (per-order $0.60): monthly $332.57
-- Subscription (monthly $280.00): per-order $0.93
+## Practical Pricing Policy (Fixed Only)
 
-**standard**
-- Fixed fee: $3.27
-- Percent: 13.04%
-- Hybrid (percent 3.50%): fixed $2.39
-- Hybrid (fixed $1.40): percent 7.45%
-- Subscription (per-order $0.60): monthly $426.14
-- Subscription (monthly $280.00): per-order $1.51
+- Public base policy: **single fixed fee = $3.60**.
+- If operating in low-cost mode only: reduce to `$3.35`.
+- If service quality moves to premium profile for long periods: increase toward `$4.20+`.
 
-**premium**
-- Fixed fee: $4.18
-- Percent: 16.67%
-- Hybrid (percent 3.50%): fixed $3.30
-- Hybrid (fixed $1.40): percent 11.08%
-- Subscription (per-order $0.60): monthly $570.86
-- Subscription (monthly $280.00): per-order $2.42
+## What This Means for a "Project for People"
 
-## Что означает результат
+- You can stay honest and independent from order size by using fixed fee only.
+- With `$3.60`, model shows self-sustainability plus controlled reinvestment.
+- This supports salary stability and gradual hiring without aggressive overpricing.
 
-- В текущей конфигурации затраты на сервис в среднем выше базовых тарифов, особенно в standard и premium сценариях.
-- Наиболее затратные статьи во всех сценариях: карты и комиссии платежного провайдера.
-- Если сохранять UX с высокой частотой трекинга, то процент/фикс должны быть заметно выше текущих (см. break-even).
+## Next Steps
 
-## Следующие шаги
-
-1. Подставить реальные цены провайдеров карт/SMS/ML и платежного процессинга.
-2. Уточнить допустимую частоту трекинга и лимиты обновлений карты.
-3. Зафиксировать целевую маржу (например, 10–20%) и пересчитать тарифы.
+1. Decide governance rule for updating fixed fee (for example: quarterly review, open report publication).
+2. Add alert thresholds in code for auto-warning when real cost/order approaches fee.
+3. Plug real provider invoices (maps, payment, SMS, ML) to tighten confidence intervals.
